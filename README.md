@@ -15,7 +15,7 @@ Facts store & sync. Meant to be used in conjunction with DataScript, or similar.
 * npm install
 * npm run dev
 
-* run nstore server: ./src/server --db <filename>
+* run nstore server: ./src/server --db filename
 
 * access localhost:8080
 
