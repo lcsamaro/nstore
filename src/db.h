@@ -1,6 +1,8 @@
 #ifndef NSTORE_DB_H
 #define NSTORE_DB_H
 
+#include "common.h"
+
 #include <lmdb.h>
 
 #include <string>
@@ -28,12 +30,12 @@ enum {
     META_ID
 };
 
-typedef int64_t  entity_t;
+typedef i64      entity_t;
 typedef entity_t attribute_t;
 typedef entity_t transaction_t;
-typedef uint32_t namespace_t;
+typedef u32      namespace_t;
 
-extern MDB_dbi dbi;
+extern              MDB_dbi  dbi;
 extern thread_local MDB_txn *read_txn;
 
 enum {
@@ -50,14 +52,6 @@ union value {
 	double  f;
 	int8_t  b[32]; // 32b
 };
-
-/* new key structure (review):
- * u32 namespace  - 4
- * u64 E + A      - 8
- * u64 tx + index - 8
- * i8  padding    - 1
- * b32 value      - 32
- */
 
 struct custom_key {
 	namespace_t   ns; // 4b
@@ -97,9 +91,9 @@ enum {
 namespace db {
 
 // helpers for meta keys
-bool put_meta(MDB_txn *txn, namespace_t ns, int64_t id, int64_t val);
+bool put_meta(MDB_txn *txn, namespace_t ns, i64 id, i64 val);
 
-bool get_meta(MDB_txn *txn, namespace_t ns, int64_t id, int64_t *val);
+bool get_meta(MDB_txn *txn, namespace_t ns, i64 id, i64 *val);
 
 // check if db namespace exists
 bool exists(MDB_txn *txn, namespace_t ns);

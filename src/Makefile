@@ -9,10 +9,13 @@ CPPFLAGS=-DASIO_STANDALONE
 all: release
 release: CXXFLAGS += -O3 -funroll-loops
 release: CCFLAGS += -O3 -funroll-loops
-release: server tools
+release: server tools test
 debug: CXXFLAGS += -O1 -DDEBUG -g
 debug: CCFLAGS += -O1 -DDEBUG -g
-debug: server tools
+debug: server tools test
+
+test: test.cpp db.o mdb.o midl.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o test test.cpp db.o mdb.o midl.o $(LNK)
 
 tools: indices
 clean:

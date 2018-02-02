@@ -58,15 +58,14 @@ using asio::ip::tcp;
 	}
 
 void display_usage() {
+	puts("nstore server");
 	puts("usage: nstore [options]");
 	puts("options:");
-	puts("  --db  <filename>  log file");
+	puts("  --db  <filename>  database file");
 	puts("  --log <filename>  log file");
-	puts("  --map        <n>  map size (log2)");
+	puts("  --map        <n>  map size (log2n)");
 	puts("  --port    <port>  listening port");
-	puts("  --readers    <n>  reader threadpool size");
-	puts("  --time-travel     enable time travel");
-	puts("  --tx-log          enable transaction log");
+	puts("  --readers    <n>  # of reader threads");
 }
 
 int main(int argc, char *argv[]) {
@@ -168,3 +167,4 @@ int main(int argc, char *argv[]) {
 	logger->info("bye");
 	return 0;
 }
+

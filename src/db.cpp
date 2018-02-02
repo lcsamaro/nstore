@@ -90,7 +90,7 @@ void fill_meta_key(custom_key *ck, namespace_t ns, int64_t id) {
 }
 
 // conf
-bool put_meta(MDB_txn *txn, namespace_t ns, int64_t id, int64_t val) {
+bool put_meta(MDB_txn *txn, namespace_t ns, i64 id, int64_t val) {
     // TODO: store value inside key
     custom_key ck = {0};
     fill_meta_key(&ck, ns, id);
@@ -99,11 +99,11 @@ bool put_meta(MDB_txn *txn, namespace_t ns, int64_t id, int64_t val) {
     k.mv_size = sizeof(custom_key);
     MDB_val v;
     v.mv_data = &val;
-    v.mv_size = sizeof(int64_t);
+    v.mv_size = sizeof(i64);
     return mdb_put(txn, dbi, &k, &v, 0) != 0;
 }
 
-bool get_meta(MDB_txn *txn, namespace_t ns, int64_t id, int64_t *val) {
+bool get_meta(MDB_txn *txn, namespace_t ns, i64 id, i64 *val) {
     custom_key ck = {0};
     fill_meta_key(&ck, ns, id);
     MDB_val k, v;
