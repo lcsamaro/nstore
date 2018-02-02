@@ -115,7 +115,7 @@ bool get_meta(MDB_txn *txn, namespace_t ns, i64 id, i64 *val) {
 }
 
 bool exists(MDB_txn *txn, namespace_t ns) {
-    int64_t tx;
+    transaction_t tx;
     return !get_meta(txn, ns, META_TX, &tx);
 }
 
@@ -141,18 +141,15 @@ bool setup(MDB_txn *txn, namespace_t ns) {
     val.mv_size = 0;
 
     int rc, flag = 0;
-    auto fill_idx = [&]() {
+    auto fill_idx = [&] () {
         ck.sort = SORT_EATV;
         rc = mdb_cursor_put(mc, &key, &val, flag);
 
         ck.sort = SORT_AETV;
         rc = mdb_cursor_put(mc, &key, &val, flag);
-
-        ck.sort = SORT_TEAV;
-        rc = mdb_cursor_put(mc, &key, &val, flag);
     };
 
-    auto ins_int = [&](int64_t e, int64_t a, int64_t v) {
+    auto ins_int = [&] (entity_t e, attribute_t a, i64 v) {
         ck.type = KEY_INTEGER;
         ck.pad = 0;
         ck.e = e;
@@ -161,7 +158,7 @@ bool setup(MDB_txn *txn, namespace_t ns) {
         fill_idx();
     };
 
-    auto ins_str = [&](int64_t e, int64_t a, const char *v) {
+    auto ins_str = [&] (entity_t e, attribute_t a, const char *v) {
         ck.type = KEY_BLOB;
         ck.pad = strlen(v) + 1; // +1, as 0 is actually used for padding
         ck.e = e;
@@ -329,7 +326,7 @@ bool query(MDB_txn *txn, custom_key *start, std::function<bool(custom_key *k, MD
     return false;
 }
 
-query_result query_a(MDB_txn *txn, namespace_t ns, int64_t tx, int64_t a) {
+query_result query_a(MDB_txn *txn, namespace_t ns, transaction_t tx, attribute_t a) {
     custom_key min_key = {0};
     min_key.ns = ns;
     min_key.type = KEY_MIN_SENTINEL;

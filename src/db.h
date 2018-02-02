@@ -13,10 +13,6 @@ enum sorting { SORT_E=0, SORT_A, SORT_V, SORT_T };
 
 #define SORT_EATV MAKE_SORT(SORT_E, SORT_A, SORT_T, SORT_V)
 #define SORT_AETV MAKE_SORT(SORT_A, SORT_E, SORT_T, SORT_V)
-#define SORT_TEAV MAKE_SORT(SORT_T, SORT_E, SORT_A, SORT_V)
-
-#define FLAG_TIME_TRAVEL 0x1
-#define FLAG_TX_LOG      0x2
 
 enum {
 	INDEX_META,
@@ -90,6 +86,8 @@ enum {
 
 namespace db {
 
+int custom_key_compare(const MDB_val *a, const MDB_val *b);
+
 // helpers for meta keys
 bool put_meta(MDB_txn *txn, namespace_t ns, i64 id, i64 val);
 
@@ -116,24 +114,23 @@ struct datom {
     entity_t e;
     attribute_t a;
 
-    int64_t v;
+    i64 v;
     std::string vs;
 
     transaction_t t;
     bool r;
-
     bool is_int;
 
-    datom(int64_t e, int64_t a, int64_t v, int64_t t, bool r) :
+    datom(entity_t e, attribute_t a, i64 v, transaction_t t, bool r) :
             e(e), a(a), v(v), t(t), r(r), is_int(true) {}
 
-    datom(int64_t e, int64_t a, std::string v, int64_t t, bool r) :
+    datom(entity_t e, attribute_t a, std::string v, transaction_t t, bool r) :
             e(e), a(a), vs(v), t(t), r(r), is_int(false) {}
 };
 
 typedef std::vector <datom> query_result;
 
-query_result query_a(MDB_txn *txn, namespace_t ns, int64_t tx, int64_t a);
+query_result query_a(MDB_txn *txn, namespace_t ns, transaction_t tx, attribute_t a);
 bool last_datom(MDB_txn *txn, custom_key *start);
 
 } // end of db namespace

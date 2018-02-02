@@ -139,11 +139,9 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < readers; i++) {
 		reader_threads[i] =
 			std::thread([] () {
-				// initialize thread_local txn
 				if (db::txn_begin(MDB_RDONLY, &read_txn)) return;
 				mdb_txn_reset(read_txn);
 				IO_LOOP(reader_service);
-				// finalize thread_local txn
 				mdb_txn_commit(read_txn);
 			});
 	}
