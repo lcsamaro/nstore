@@ -1,19 +1,28 @@
 #include "common.h"
 #include "db.h"
+#include "handler.h"
+#include "session.h"
 
-#define CATCH_CONFIG_MAIN
+#define CATCH_CONFIG_RUNNER
 #include <catch.hpp>
+
+#include <json.hpp>
 
 #include <cstdio>
 #include <functional>
+#include <memory>
+#include <string>
 
-/* mocks - begin */
-
-
-
-/* mocks - end */
+using json = nlohmann::json;
 
 #define db_file "test_db"
+
+int main( int argc, char* argv[] ) {
+	logger = spdlog::stdout_color_mt("logger");
+	logger->set_pattern("%D %T %L %v");
+	return Catch::Session().run( argc, argv );
+}
+
 
 TEST_CASE("operations", "[database]") {
 	REQUIRE(db::open(db_file, 20) == false);
@@ -106,11 +115,37 @@ TEST_CASE("sorting", "[database]") {
 	}
 }
 
+
+struct fixDB {
+	bool readonly;
+	fixDB(bool readonly) : readonly(readonly) {
+		REQUIRE(db::open(db_file, 20) == false);
+		if (readonly) {
+			REQUIRE(db::txn_begin(MDB_RDONLY, &read_txn) == 0);
+			mdb_txn_reset(read_txn);
+		}
+	}
+	~fixDB() {
+		if (readonly) mdb_txn_abort(read_txn);
+		db::close();
+		REQUIRE(remove(db_file) == 0);
+		REQUIRE(remove(db_file "-lock") == 0);
+	}
+};
+
 TEST_CASE("facts", "[handler]") {
-	REQUIRE( 1 == 1 );
+	fixDB f(true);
+	handle_request("facts", "-1\r");
 }
 
 TEST_CASE( "transact", "[handler]" ) {
-	REQUIRE( 1 == 1 );
+	fixDB f(false);
+	auto s = std::make_shared<session>();
+	json arg = {
+		// e,  a ,  v , r
+		{ -1, 100, 200, 0 },
+		{ -1, 101, 201, 0 }
+	};
+	handle_request("transact", arg.dump());
 }
 

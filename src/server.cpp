@@ -1,7 +1,8 @@
-#include "db.h"
 #include "channel.h"
-#include "session.h"
+#include "db.h"
 #include "server.h"
+#include "session.h"
+#include "stats.h"
 
 #include <asio.hpp>
 
@@ -19,16 +20,6 @@ std::shared_ptr<spdlog::logger> logger;
 asio::io_service io_service;
 asio::io_service writer_service;
 asio::io_service reader_service;
-
-namespace stats {
-
-time_t startup;
-size_t no_connects = 0;
-size_t no_disconnects = 0;
-size_t no_ro_txns = 0;
-size_t no_w_txns = 0;
-
-} // end of stats namespace
 
 server::server(asio::io_service& io_service, short port) :
 	a(io_service, tcp::endpoint(tcp::v4(), port)), s(io_service) {

@@ -1,7 +1,7 @@
 CC=gcc
 CXX=g++
 
-INC=-I../lib/liblmdb -I../lib/spdlog/include -I../lib/rapidjson/include -isystem../lib/asio/include -I../lib/catch
+INC=-I../lib/liblmdb -I../lib/spdlog/include -I../lib/rapidjson/include -isystem../lib/asio/include -I../lib/catch -I../lib/json
 LNK=-lsodium
 CXXFLAGS+=$(INC) -pthread -std=c++11 -Wall -pedantic
 CPPFLAGS=-DASIO_STANDALONE
@@ -14,15 +14,15 @@ debug: CXXFLAGS += -O1 -DDEBUG -g
 debug: CCFLAGS += -O1 -DDEBUG -g
 debug: server tools test
 
-test: test.cpp db.o mdb.o midl.o
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o test test.cpp db.o mdb.o midl.o $(LNK)
+test: test.cpp mocks.o handler.o db.o stats.o session.o mdb.o midl.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o test test.cpp mocks.o handler.o db.o stats.o session.o mdb.o midl.o $(LNK) -DNSTORE_UNIT_TESTING
 
-tools: indices
+tools: indices mdb_tools
 clean:
 	rm -f *.o server indices
 
-server: server.cpp server.h handler.o db.o session.o channel.o mdb.o midl.o
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o server server.cpp handler.o db.o session.o channel.o mdb.o midl.o $(LNK)
+server: server.cpp server.h handler.o db.o stats.o session.o channel.o mdb.o midl.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o server server.cpp handler.o db.o stats.o session.o channel.o mdb.o midl.o $(LNK)
 
 mdb.o: ../lib/liblmdb/mdb.c ../lib/liblmdb/lmdb.h ../lib/liblmdb/midl.h
 	$(CC) $(CCFLAGS) -c ../lib/liblmdb/mdb.c

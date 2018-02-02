@@ -59,7 +59,7 @@ int custom_key_compare(const MDB_val *a, const MDB_val *b) {
                 cmp = cka->a - ckb->a;
                 break;
             case SORT_T:
-                cmp = cka->t - ckb->t; /* TODO: may be wrong with MAX T */
+                cmp = cka->t - ckb->t;
                 break;
             case SORT_V:
                 cmp = cka->type - ckb->type;
@@ -89,7 +89,6 @@ void fill_meta_key(custom_key *ck, namespace_t ns, int64_t id) {
     ck->e = id;
 }
 
-// conf
 bool put_meta(MDB_txn *txn, namespace_t ns, i64 id, int64_t val) {
     // TODO: store value inside key
     custom_key ck = {0};
@@ -200,27 +199,27 @@ bool setup(MDB_txn *txn, namespace_t ns) {
     ck.sort = ck.e = ck.t = 0;
     rc = mdb_cursor_put(mc, &key, &val_unique, flag);
 
-    ins_int(db_ident, db_type, db_type_value);
-    ins_int(db_type, db_type, db_type_ref);
+    ins_int(db_ident,       db_type, db_type_value);
+    ins_int(db_type,        db_type, db_type_ref);
     ins_int(db_cardinality, db_type, db_type_ref);
-    ins_int(db_unique, db_type, db_type_ref);
+    ins_int(db_unique,      db_type, db_type_ref);
 
-    ins_int(db_ident, db_cardinality, db_cardinality_one);
-    ins_int(db_type, db_cardinality, db_cardinality_one);
+    ins_int(db_ident,       db_cardinality, db_cardinality_one);
+    ins_int(db_type,        db_cardinality, db_cardinality_one);
     ins_int(db_cardinality, db_cardinality, db_cardinality_one);
-    ins_int(db_unique, db_cardinality, db_cardinality_one);
+    ins_int(db_unique,      db_cardinality, db_cardinality_one);
 
-    ins_int(db_ident, db_unique, db_unique_yes);
-    ins_int(db_type, db_unique, db_unique_no);
+    ins_int(db_ident,       db_unique, db_unique_yes);
+    ins_int(db_type,        db_unique, db_unique_no);
     ins_int(db_cardinality, db_unique, db_unique_no);
-    ins_int(db_unique, db_unique, db_unique_no);
+    ins_int(db_unique,      db_unique, db_unique_no);
 
-    ins_str(db_type_value, db_ident, ":db.type/value");
-    ins_str(db_type_ref, db_ident, ":db.type/ref");
-    ins_str(db_cardinality_one, db_ident, ":db.cardinality/one");
+    ins_str(db_type_value,       db_ident, ":db.type/value");
+    ins_str(db_type_ref,         db_ident, ":db.type/ref");
+    ins_str(db_cardinality_one,  db_ident, ":db.cardinality/one");
     ins_str(db_cardinality_many, db_ident, ":db.cardinality/many");
-    ins_str(db_unique_no, db_ident, ":db.unique/no");
-    ins_str(db_unique_yes, db_ident, ":db.unique/yes");
+    ins_str(db_unique_no,        db_ident, ":db.unique/no");
+    ins_str(db_unique_yes,       db_ident, ":db.unique/yes");
 
     mdb_cursor_close(mc);
 

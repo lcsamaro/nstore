@@ -1,8 +1,9 @@
-#include "session.h"
-#include "db.h"
-#include "server.h"
 #include "channel.h"
+#include "db.h"
 #include "handler.h"
+#include "server.h"
+#include "session.h"
+#include "stats.h"
 
 #include <cctype>
 #include <chrono>

@@ -1,6 +1,12 @@
 #ifndef NSTORE_SESSION_H
 #define NSTORE_SESSION_H
 
+#ifdef NSTORE_UNIT_TESTING
+
+# include "mocks.h"
+
+#else
+
 #include <asio.hpp>
 
 #include <deque>
@@ -38,6 +44,8 @@ public:
 	uint64_t uid();
 	std::string& argument();
 };
+
+#endif // NSTORE_UNIT_TESTING
 
 #endif // NSTORE_SESSION_H
 

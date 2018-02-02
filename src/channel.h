@@ -2,19 +2,20 @@
 #define NSTORE_CHANNEL_H
 
 #include <cstdint>
-#include <map>
 #include <memory>
-#include <set>
+#include <string>
+
+#include "common.h"
 
 class session;
 
 namespace channel {
 
-void join(uint32_t ns, std::shared_ptr<session> member);
-void leave(uint32_t ns, std::shared_ptr<session> member);
-void publish(uint32_t ns, std::shared_ptr<session> from, const std::string& msg);
+void join(u32 ns, std::shared_ptr<session> member);
+void leave(u32 ns, std::shared_ptr<session> member);
+void publish(u32 ns, std::shared_ptr<session> from, const std::string& msg);
 void clear();
 
-}
+} // end of channel namespace
 
 #endif // NSTORE_CHANNEL_H

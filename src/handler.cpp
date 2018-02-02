@@ -3,6 +3,7 @@
 #include "handler.h"
 #include "server.h"
 #include "session.h"
+#include "stats.h"
 
 extern "C" {
 #include <sodium.h> /* sha-256 */
@@ -15,6 +16,8 @@ extern "C" {
 
 #include <unordered_map>
 #include <unordered_set>
+
+#include <set>
 
 #define EOL "\r\n"
 #define ACK_OK  "0" EOL
@@ -124,7 +127,10 @@ void facts(std::shared_ptr<session> self) {
 	auto arg = self->argument();
 	auto ns = self->selected();
 	rapidjson::Document doc;
-	if (doc.Parse(arg.c_str()).HasParseError()) PERROR("[facts] invalid json");
+	if (doc.Parse(arg.c_str()).HasParseError()) {
+		logger->info(arg);
+		PERROR("[facts] invalid json");
+	}
 	if (!doc.IsInt64()) PERROR("[facts] invalid arg");
 
 	if (mdb_txn_renew(read_txn)) PERROR("[facts] ro txn");
