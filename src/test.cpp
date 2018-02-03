@@ -182,6 +182,14 @@ TEST_CASE( "transact", "[handler]" ) {
 	assert_request("transact", arg, reply);
 }
 
+
+TEST_CASE("basics", "[handler]") {
+	handle_request("freeze", "0");
+	handle_request("ronly", "0");
+	handle_request("info", "0");
+}
+
+
 TEST_CASE("json comparison") {
 	json a = {
 		{ "a", { 1, 2, 3 } },

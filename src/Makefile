@@ -14,12 +14,18 @@ debug: CXXFLAGS += -O1 -DDEBUG -g
 debug: CCFLAGS += -O1 -DDEBUG -g
 debug: server tools
 
-test: CXXFLAGS += -O1 -DDEBUG -g
-test: CCFLAGS += -O1 -DDEBUG -g
+test: CXXFLAGS += -O1 -DDEBUG -g -fprofile-arcs -ftest-coverage
+test: CCFLAGS += -O1 -DDEBUG -g -fprofile-arcs -ftest-coverage
 test: CXXFLAGS += -I../lib/catch -I../lib/json
 test: CPPFLAGS += -DNSTORE_UNIT_TESTING
 test: test.cpp mocks.o handler.o db.o stats.o mdb.o midl.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o test test.cpp mocks.o handler.o db.o stats.o mdb.o midl.o $(LNK)
+
+cov: test
+	( gcov handler.cpp -b -s . -r -b ) ; \
+		( lcov --directory . -c --output-file coverage.info ) ; \
+		( genhtml coverage.info --output-directory out ) ; \
+		( google-chrome ./out/index.html )
 
 tools: indices mdb_tools
 clean:
@@ -38,5 +44,9 @@ indices: indices.cpp db.o mdb.o midl.o
 	$(CXX) $(CXXFLAGS) -O3 -funroll-loops -o indices indices.cpp db.o mdb.o midl.o $(INCLUDE)
 
 mdb_tools:
-	( $(MAKE) -C ../lib/liblmdb ) && ( cp ../lib/liblmdb/mdb_copy . && cp ../lib/liblmdb/mdb_dump . && cp ../lib/liblmdb/mdb_load . && cp ../lib/liblmdb/mdb_stat . )
+	( $(MAKE) -C ../lib/liblmdb ) && \
+		( cp ../lib/liblmdb/mdb_copy . && \
+			cp ../lib/liblmdb/mdb_dump . && \
+			cp ../lib/liblmdb/mdb_load . && \
+			cp ../lib/liblmdb/mdb_stat . )
 
