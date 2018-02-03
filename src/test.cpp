@@ -115,7 +115,6 @@ TEST_CASE("sorting", "[database]") {
 	}
 }
 
-
 struct fixDB {
 	bool readonly;
 	fixDB(bool readonly) : readonly(readonly) {
@@ -133,9 +132,37 @@ struct fixDB {
 	}
 };
 
+TEST_CASE("ping", "[handler]") {
+	assert_request("ping", "the quick brown fox", "the quick brown fox");
+}
+
+TEST_CASE("select", "[handler]") {
+	fixDB f(true);
+	assert_request("select", 777, 1);
+	assert_request("select", 0, 0);
+	assert_request("namespace", 777, 0);
+	assert_request("select", 777, 0);
+}
+
+TEST_CASE("namespace", "[handler]") {
+	fixDB f(true);
+	assert_request("namespace", 0, 1);
+	assert_request("namespace", 777, 0);
+	assert_request("namespace", 777, 1);
+}
+
+TEST_CASE("subscribe", "[handler]") {
+	assert_request("subscribe", 0, 0);
+}
+
+TEST_CASE("unsubscribe", "[handler]") {
+	assert_request("unsubscribe", 0, 0);
+}
+
 TEST_CASE("facts", "[handler]") {
 	fixDB f(true);
-	handle_request("facts", "-1\r");
+	handle_request("facts", "-1");
+	//assert_request("facts", -1, 0);
 }
 
 TEST_CASE( "transact", "[handler]" ) {
@@ -146,6 +173,33 @@ TEST_CASE( "transact", "[handler]" ) {
 		{ -1, 100, 200, 0 },
 		{ -1, 101, 201, 0 }
 	};
-	handle_request("transact", arg.dump());
+	json reply = {
+		{ "tx",   1          },
+		{ "type", "response" },
+		{ "facts", { { 10, 100, 200, 1, false }, { 10, 101, 201, 1, false } } },
+		{ "new_ids", {{-1, 10}} }
+	};
+	assert_request("transact", arg, reply);
+}
+
+TEST_CASE("json comparison") {
+	json a = {
+		{ "a", { 1, 2, 3 } },
+		{ "b", { 4, 5, 6 } },
+		{ "c", { 7, 8, 9 } }
+	};
+	json b = {
+		{ "c", { 7, 8, 9 } },
+		{ "b", { 4, 5, 6 } },
+		{ "a", { 1, 2, 3 } }
+	};
+	json c = {
+		{ "a", { 1, 2, 3 } },
+		{ "c", { 7, 8, 9 } },
+		{ "b", { 4, 5, 6 } }
+	};
+	REQUIRE(a == b);
+	REQUIRE(b == c);
+	REQUIRE(a == c);
 }
 

@@ -9,6 +9,9 @@
 #include <memory>
 #include <string>
 
+#include <json.hpp>
+using json = nlohmann::json;
+
 #include <spdlog/spdlog.h>
 extern std::shared_ptr<spdlog::logger> logger;
 
@@ -39,6 +42,8 @@ struct session {
 };
 
 void handle_request(std::string cmd, std::string arg);
+void assert_request(std::string req, json arg, json reply);
+void assert_request(std::string req, json arg, json reply, json published);
 
 namespace channel {
 

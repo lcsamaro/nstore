@@ -98,16 +98,16 @@ void select(std::shared_ptr<session> self) {
 	rapidjson::Document doc;
 	if (doc.Parse(self->argument().c_str()).HasParseError()) {
 		logger->warn("{} [select] invalid json: {}", self->uid(), self->argument());
-		ERROR("[select] invalid json");
+		PERROR("[select] invalid json");
 	}
 	if (!doc.IsInt64()) {
 		logger->warn("{} [select] invalid argument: {}", self->uid(), self->argument());
-		ERROR("[select] invalid arg");
+		PERROR("[select] invalid arg");
 	}
 
 	if (mdb_txn_renew(read_txn)) {
 		logger->error("{} [select] could not renew transaction", self->uid());
-		ERROR("[select] ro txn");
+		PERROR("[select] ro txn");
 	}
 	auto ns = doc.GetInt64();
 	auto e = db::exists(read_txn, ns);
@@ -115,12 +115,17 @@ void select(std::shared_ptr<session> self) {
 
 	if (e) {
 		self->select(ns);
-		channel::leave(ns, self);
-		self->write(ACK_OK);
+		io_service.post([self, ns] () {
+			channel::leave(ns, self);
+			self->write(ACK_OK);
+			self->read_request();
+		});
 	} else {
-		self->write(ACK_ERR);
+		io_service.post([self] () {
+			self->write(ACK_ERR);
+			self->read_request();
+		});
 	}
-	NEXT_REQ();
 }
 
 void facts(std::shared_ptr<session> self) {
@@ -294,7 +299,7 @@ void transact(std::shared_ptr<session> self) {
 	rapidjson::Value new_facts(rapidjson::kArrayType);
 	rapidjson::Value nids(rapidjson::kArrayType);
 
-	std::string response;
+	std::string response, pub;
 	std::unordered_set<entity_t> e_unique;
 	std::unordered_map<entity_t, entity_t> new_ids;
 	std::unordered_map<entity_t, bool> e_card;
@@ -546,15 +551,15 @@ skip_remove_last:
 	res.AddMember("new_ids", nids, res.GetAllocator());
 
 	response = make_response(res);
-	io_service.post([self, response] () { self->write(response); });
 
 	res.RemoveMember("new_ids");
 	res.RemoveMember("type");
 	res.AddMember("type", "event", res.GetAllocator());
 
-	response = make_response(res);
-	io_service.post([self, ns, response] () {
-		channel::publish(ns, self, response);
+	pub = make_response(res);
+	io_service.post([self, ns, response, pub] () {
+		self->write(response);
+		channel::publish(ns, self, pub);
 		self->read_request();
 	});
 

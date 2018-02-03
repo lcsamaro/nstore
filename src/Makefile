@@ -1,7 +1,7 @@
 CC=gcc
 CXX=g++
 
-INC=-I../lib/liblmdb -I../lib/spdlog/include -I../lib/rapidjson/include -isystem../lib/asio/include -I../lib/catch -I../lib/json
+INC=-I../lib/liblmdb -I../lib/spdlog/include -I../lib/rapidjson/include -isystem../lib/asio/include
 LNK=-lsodium
 CXXFLAGS+=$(INC) -pthread -std=c++11 -Wall -pedantic
 CPPFLAGS=-DASIO_STANDALONE
@@ -9,13 +9,17 @@ CPPFLAGS=-DASIO_STANDALONE
 all: release
 release: CXXFLAGS += -O3 -funroll-loops
 release: CCFLAGS += -O3 -funroll-loops
-release: server tools test
+release: server tools
 debug: CXXFLAGS += -O1 -DDEBUG -g
 debug: CCFLAGS += -O1 -DDEBUG -g
-debug: server tools test
+debug: server tools
 
-test: test.cpp mocks.o handler.o db.o stats.o session.o mdb.o midl.o
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o test test.cpp mocks.o handler.o db.o stats.o session.o mdb.o midl.o $(LNK) -DNSTORE_UNIT_TESTING
+test: CXXFLAGS += -O1 -DDEBUG -g
+test: CCFLAGS += -O1 -DDEBUG -g
+test: CXXFLAGS += -I../lib/catch -I../lib/json
+test: CPPFLAGS += -DNSTORE_UNIT_TESTING
+test: test.cpp mocks.o handler.o db.o stats.o mdb.o midl.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o test test.cpp mocks.o handler.o db.o stats.o mdb.o midl.o $(LNK)
 
 tools: indices mdb_tools
 clean:
