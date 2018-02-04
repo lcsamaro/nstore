@@ -2,15 +2,18 @@ var m = require("mithril");
 var Conn = require('./sync');
 
 var s = new Conn("ws://" + window.location.host + "/ws",
-  () => this.transact([
+  () => {
+	  console.log("transacting");
+	  s.transact([
       [-1, ":db/ident", ":task/name", 0],
       [-1, ":db/cardinality", ":db.cardinality/one", 0],
       [-1, ":db/unique", ":db.unique/yes", 0],
 
       [-2, ":db/ident", ":task/done", 0],
       [-2, ":db/cardinality", ":db.cardinality/one", 0]
-    ]),
-  () => m.redraw()
+    ])},
+  () => {console.log("redraw");m.redraw()},
+  () => {}
   );
 
 var TaskList = {
