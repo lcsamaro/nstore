@@ -50,7 +50,6 @@ namespace channel {
 void join(u32 ns, std::shared_ptr<session> member);
 void leave(u32 ns, std::shared_ptr<session> member);
 void publish(u32 ns, std::shared_ptr<session> from, const std::string& msg);
-void clear();
 
 } // end of channel namespace
 

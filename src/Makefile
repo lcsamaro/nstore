@@ -21,9 +21,11 @@ test: CPPFLAGS += -DNSTORE_UNIT_TESTING
 test: test.cpp mocks.o handler.o db.o stats.o mdb.o midl.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o test test.cpp mocks.o handler.o db.o stats.o mdb.o midl.o $(LNK)
 
+# ( lcov --directory . --extract src --rc lcov_branch_coverage=1 -c --output-file coverage.info ) ; \
+
 cov: test
 	( gcov handler.cpp -b -s . -r -b ) ; \
-		( lcov --directory . -c --output-file coverage.info ) ; \
+		( lcov --directory . --extract . --output-file coverage.info ) ; \
 		( genhtml coverage.info --output-directory out ) ; \
 		( google-chrome ./out/index.html )
 

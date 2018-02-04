@@ -134,14 +134,22 @@ struct fixDB {
 
 TEST_CASE("ping", "[handler]") {
 	assert_request("ping", "the quick brown fox", "the quick brown fox");
+	assert_request("ping", "", "");
 }
 
 TEST_CASE("select", "[handler]") {
 	fixDB f(true);
+	puts("select...");
 	assert_request("select", 777, 1);
+	puts("select 2...");
 	assert_request("select", 0, 0);
+	puts("namespace...");
 	assert_request("namespace", 777, 0);
 	assert_request("select", 777, 0);
+
+	assert_request("select", "abc", 1);
+	assert_request("select", "93840239842938429384", 1);
+
 }
 
 TEST_CASE("namespace", "[handler]") {
@@ -171,24 +179,60 @@ TEST_CASE( "transact", "[handler]" ) {
 	json arg = {
 		// e,  a ,  v , r
 		{ -1, 100, 200, 0 },
-		{ -1, 101, 201, 0 }
+		{ -1, 101, "abc", 0 },
+		{ -1, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaa", 0 },
+		{ -1, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaab", 0 },
+		{ -1, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabb", 0 },
+		{ -1, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbb", 0 },
+		{ -1, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbe", 0 },
+		{ -1, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbbb", 0 }
 	};
 	json reply = {
 		{ "tx",   1          },
 		{ "type", "response" },
-		{ "facts", { { 10, 100, 200, 1, false }, { 10, 101, 201, 1, false } } },
+		{ "facts", {
+			{ 10, 100, 200, 1, false },
+			{ 10, 101, "abc", 1, false },
+			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaa", 1, false },
+			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaab", 1, false },
+			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabb", 1, false },
+			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbb", 1, false },
+			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbe", 1, false },
+			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbbb", 1, false }
+			} },
 		{ "new_ids", {{-1, 10}} }
 	};
 	assert_request("transact", arg, reply);
 }
 
+TEST_CASE( "transact - pub sub", "[handler]" ) {
+	fixDB f(false);
+	auto s = std::make_shared<session>();
+	json arg = {
+		// e,  a ,  v , r
+		{ -1, 100, 200, 0 }
+	};
+	json reply = {
+		{ "tx",   1          },
+		{ "type", "response" },
+		{ "facts", {
+			{ 10, 100, 200, 1, false }
+			} },
+		{ "new_ids", {{-1, 10}} }
+	};
+	json pub = {
+		{ "tx",   1       },
+		{ "type", "event" },
+		{ "facts", { { 10, 100, 200, 1, false } } }
+	};
+	assert_request("transact", arg, reply, pub);
+}
 
 TEST_CASE("basics", "[handler]") {
 	handle_request("freeze", "0");
 	handle_request("ronly", "0");
 	handle_request("info", "0");
 }
-
 
 TEST_CASE("json comparison") {
 	json a = {

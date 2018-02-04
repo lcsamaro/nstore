@@ -325,6 +325,12 @@ bool query(MDB_txn *txn, custom_key *start, std::function<bool(custom_key *k, MD
     return false;
 }
 
+datom::datom(entity_t e, attribute_t a, i64 v, transaction_t t, bool r) :
+	e(e), a(a), v(v), t(t), r(r), is_int(true) {}
+
+datom::datom(entity_t e, attribute_t a, std::string v, transaction_t t, bool r) :
+	e(e), a(a), vs(v), t(t), r(r), is_int(false) {}
+
 query_result query_a(MDB_txn *txn, namespace_t ns, transaction_t tx, attribute_t a) {
     custom_key min_key = {0};
     min_key.ns = ns;

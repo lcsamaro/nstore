@@ -18,14 +18,14 @@ int current_pool = POOL_IO;
 
 svc::svc(int pool) : pool(pool) {}
 void svc::post(std::function<void()> f) {
-	auto pool_txt = [] (int p) {
+	/*auto pool_txt = [] (int p) {
 		switch (p) {
 		case POOL_IO: return "IO";
 		case POOL_READ: return "RD";
 		}
 		return "WT";
 	};
-	std::cout << pool_txt(current_pool) << " >> " << pool_txt(pool) << std::endl;
+	std::cout << pool_txt(current_pool) << " >> " << pool_txt(pool) << std::endl;*/
 	REQUIRE(current_pool != pool);
 	current_pool = pool;
 	f();
@@ -38,7 +38,7 @@ svc writer_service(POOL_WRITE);
 session::session() {}
 
 void session::write(const std::string& msg) {
-	std::cout << "write: " << msg << std::endl;
+	//std::cout << "write: " << msg << std::endl;
 	REQUIRE(current_pool == POOL_IO);
 	if (asserting_r) {
 		auto m = json::parse(msg);
@@ -47,7 +47,7 @@ void session::write(const std::string& msg) {
 }
 
 void session::read_request() {
-	std::cout << "req" << std::endl;
+	//std::cout << "req" << std::endl;
 	REQUIRE(current_pool == POOL_IO);
 }
 
@@ -94,9 +94,7 @@ void publish(u32 ns, std::shared_ptr<session> from, const std::string& msg) {
 	if (asserting_p) REQUIRE(p == json::parse(msg));
 }
 
-void clear() {
-	REQUIRE(current_pool == POOL_IO);
-}
+//void clear() { REQUIRE(current_pool == POOL_IO); }
 
 } // end of channel namespace
 

@@ -121,11 +121,8 @@ struct datom {
     bool r;
     bool is_int;
 
-    datom(entity_t e, attribute_t a, i64 v, transaction_t t, bool r) :
-            e(e), a(a), v(v), t(t), r(r), is_int(true) {}
-
-    datom(entity_t e, attribute_t a, std::string v, transaction_t t, bool r) :
-            e(e), a(a), vs(v), t(t), r(r), is_int(false) {}
+    datom(entity_t e, attribute_t a, i64 v, transaction_t t, bool r);
+    datom(entity_t e, attribute_t a, std::string v, transaction_t t, bool r);
 };
 
 typedef std::vector <datom> query_result;
