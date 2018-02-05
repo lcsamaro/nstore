@@ -2,6 +2,8 @@
 
 Facts store & sync. Meant to be used in conjunction with DataScript, or similar.
 
+![Alt Text](https://github.com/lcsamaro/nstore/raw/master/sample/sample.gif)
+
 ## building
 
 * install libsodium
