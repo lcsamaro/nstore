@@ -67,7 +67,8 @@ struct custom_key {
 
 // basic facts
 enum {
-	db_ident = 0,
+	db_nil = 0,
+	db_ident,
 	db_type,
 	db_cardinality,
 	db_unique,

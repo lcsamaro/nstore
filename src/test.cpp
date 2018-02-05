@@ -191,16 +191,16 @@ TEST_CASE( "transact", "[handler]" ) {
 		{ "tx",   1          },
 		{ "type", "response" },
 		{ "facts", {
-			{ 10, 100, 200, 1, false },
-			{ 10, 101, "abc", 1, false },
-			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaa", 1, false },
-			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaab", 1, false },
-			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabb", 1, false },
-			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbb", 1, false },
-			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbe", 1, false },
-			{ 10, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbbb", 1, false }
+			{ db_initial_id, 100, 200, 1, false },
+			{ db_initial_id, 101, "abc", 1, false },
+			{ db_initial_id, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaa", 1, false },
+			{ db_initial_id, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaab", 1, false },
+			{ db_initial_id, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabb", 1, false },
+			{ db_initial_id, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbb", 1, false },
+			{ db_initial_id, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbe", 1, false },
+			{ db_initial_id, 101, "aaaaabbbbbcccccdddddeeeeefffffaaaaabbbb", 1, false }
 			} },
-		{ "new_ids", {{-1, 10}} }
+		{ "new_ids", {{-1, db_initial_id}} }
 	};
 	assert_request("transact", arg, reply);
 }
@@ -216,14 +216,14 @@ TEST_CASE( "transact - pub sub", "[handler]" ) {
 		{ "tx",   1          },
 		{ "type", "response" },
 		{ "facts", {
-			{ 10, 100, 200, 1, false }
+			{ db_initial_id, 100, 200, 1, false }
 			} },
-		{ "new_ids", {{-1, 10}} }
+		{ "new_ids", {{-1, db_initial_id}} }
 	};
 	json pub = {
 		{ "tx",   1       },
 		{ "type", "event" },
-		{ "facts", { { 10, 100, 200, 1, false } } }
+		{ "facts", { { db_initial_id, 100, 200, 1, false } } }
 	};
 	assert_request("transact", arg, reply, pub);
 }

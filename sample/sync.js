@@ -3,17 +3,18 @@ var d = require('datascript');
 
 let retryms = 1000;
 let basic_schema = {
-  db_ident:             0,
-  db_type:              1,
-  db_cardinality:       2,
-  db_unique:            3,
-  db_type_value:        4,
-  db_type_ref:          5,
-  db_cardinality_one:   6,
-  db_cardinality_many:  7,
-  db_unique_no:         8,
-  db_unique_yes:        9,
-  db_initial_id:       10
+  db_nil:               0,
+  db_ident:             1,
+  db_type:              2,
+  db_cardinality:       3,
+  db_unique:            4,
+  db_type_value:        5,
+  db_type_ref:          6,
+  db_cardinality_one:   7,
+  db_cardinality_many:  8,
+  db_unique_no:         9,
+  db_unique_yes:       10,
+  db_initial_id:       11
 };
 
 /* Conn class */
