@@ -8,6 +8,11 @@
 #include <string>
 #include <vector>
 
+
+#define NSTORE_VERSION_MAJOR 0
+#define NSTORE_VERSION_MINOR 0
+#define NSTORE_VERSION_PATCH 0
+
 enum sorting { SORT_E=0, SORT_A, SORT_V, SORT_T };
 #define MAKE_SORT(s1, s2, s3, s4) (s1 | (s2<<2) | (s3<<4) | (s4<<6))
 
@@ -23,7 +28,10 @@ enum {
 
 enum {
     META_TX = 0,
-    META_ID
+    META_ID,
+    META_VERSION_MAJOR,
+    META_VERSION_MINOR,
+    META_VERSION_PATCH
 };
 
 typedef i64      entity_t;

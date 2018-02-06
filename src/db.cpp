@@ -84,146 +84,154 @@ int custom_key_compare(const MDB_val *a, const MDB_val *b) {
 }
 
 void fill_meta_key(custom_key *ck, namespace_t ns, int64_t id) {
-    ck->type = KEY_META;
-    ck->ns = ns;
-    ck->e = id;
+	ck->type = KEY_META;
+	ck->ns = ns;
+	ck->e = id;
 }
 
 bool put_meta(MDB_txn *txn, namespace_t ns, i64 id, int64_t val) {
-    // TODO: store value inside key
-    custom_key ck = {0};
-    fill_meta_key(&ck, ns, id);
-    MDB_val k;
-    k.mv_data = &ck;
-    k.mv_size = sizeof(custom_key);
-    MDB_val v;
-    v.mv_data = &val;
-    v.mv_size = sizeof(i64);
-    return mdb_put(txn, dbi, &k, &v, 0) != 0;
+	// TODO: store value inside key
+	custom_key ck = {0};
+	fill_meta_key(&ck, ns, id);
+	MDB_val k;
+	k.mv_data = &ck;
+	k.mv_size = sizeof(custom_key);
+	MDB_val v;
+	v.mv_data = &val;
+	v.mv_size = sizeof(i64);
+	return mdb_put(txn, dbi, &k, &v, 0) != 0;
 }
 
 bool get_meta(MDB_txn *txn, namespace_t ns, i64 id, i64 *val) {
-    custom_key ck = {0};
-    fill_meta_key(&ck, ns, id);
-    MDB_val k, v;
-    k.mv_data = &ck;
-    k.mv_size = sizeof(custom_key);
-    if (mdb_get(txn, dbi, &k, &v)) return true;
-    memcpy(val, v.mv_data, sizeof(int64_t));
-    return false;
+	custom_key ck = {0};
+	fill_meta_key(&ck, ns, id);
+	MDB_val k, v;
+	k.mv_data = &ck;
+	k.mv_size = sizeof(custom_key);
+	if (mdb_get(txn, dbi, &k, &v)) return true;
+	memcpy(val, v.mv_data, sizeof(int64_t));
+	return false;
 }
 
 bool exists(MDB_txn *txn, namespace_t ns) {
-    transaction_t tx;
-    return !get_meta(txn, ns, META_TX, &tx);
+	transaction_t tx;
+	return !get_meta(txn, ns, META_TX, &tx);
 }
 
 bool setup(MDB_txn *txn, namespace_t ns) {
-    if (exists(txn, ns)) return true;
+	if (exists(txn, ns)) return true;
 
-    if (put_meta(txn, ns, META_TX, 1)) return true;
-    if (put_meta(txn, ns, META_ID, db_initial_id)) return true;
+	if (!ns) {
+		if (put_meta(txn, ns, META_VERSION_MAJOR,
+				NSTORE_VERSION_MAJOR) ||
+			put_meta(txn, ns, META_VERSION_MINOR,
+				NSTORE_VERSION_MINOR) ||
+			put_meta(txn, ns, META_VERSION_PATCH,
+				NSTORE_VERSION_PATCH))
+			return true;
+	}
 
-    MDB_cursor *mc;
-    if (mdb_cursor_open(txn, dbi, &mc)) return true;
+	if (put_meta(txn, ns, META_TX, 1)) return true;
+	if (put_meta(txn, ns, META_ID, db_initial_id)) return true;
 
-    custom_key ck;
-    ck.ns = ns;
-    ck.t = 0;
+	MDB_cursor *mc;
+	if (mdb_cursor_open(txn, dbi, &mc)) return true;
 
-    MDB_val key;
-    key.mv_size = sizeof(custom_key);
-    key.mv_data = &ck;
+	custom_key ck;
+	ck.ns = ns;
+	ck.t = 0;
 
-    MDB_val val;
-    val.mv_data = NULL;
-    val.mv_size = 0;
+	MDB_val key;
+	key.mv_size = sizeof(custom_key);
+	key.mv_data = &ck;
 
-    int rc, flag = 0;
-    auto fill_idx = [&] () {
-        ck.sort = SORT_EATV;
-        rc = mdb_cursor_put(mc, &key, &val, flag);
+	MDB_val val;
+	val.mv_data = NULL;
+	val.mv_size = 0;
 
-        ck.sort = SORT_AETV;
-        rc = mdb_cursor_put(mc, &key, &val, flag);
-    };
+	int rc, flag = 0;
+	auto fill_idx = [&] () {
+		ck.sort = SORT_EATV;
+		rc = mdb_cursor_put(mc, &key, &val, flag);
 
-    auto ins_int = [&] (entity_t e, attribute_t a, i64 v) {
-        ck.type = KEY_INTEGER;
-        ck.pad = 0;
-        ck.e = e;
-        ck.a = a;
-        ck.v.i = v;
-        fill_idx();
-    };
+		ck.sort = SORT_AETV;
+		rc = mdb_cursor_put(mc, &key, &val, flag);
+	};
 
-    auto ins_str = [&] (entity_t e, attribute_t a, const char *v) {
-        ck.type = KEY_BLOB;
-        ck.pad = strlen(v) + 1; // +1, as 0 is actually used for padding
-        ck.e = e;
-        ck.a = a;
-        strncpy((char *) ck.v.b, v, 32);
-        fill_idx();
-    };
+	auto ins_int = [&] (entity_t e, attribute_t a, i64 v) {
+		ck.type = KEY_INTEGER;
+		ck.pad = 0;
+		ck.e = e;
+		ck.a = a;
+		ck.v.i = v;
+		fill_idx();
+	};
 
+	auto ins_str = [&] (entity_t e, attribute_t a, const char *v) {
+		ck.type = KEY_BLOB;
+		ck.pad = strlen(v) + 1; // +1, as 0 is actually used for padding
+		ck.e = e;
+		ck.a = a;
+		strncpy((char *) ck.v.b, v, 32);
+		fill_idx();
+	};
 
+	entity_t unique_e;
+	MDB_val val_unique;
+	val_unique.mv_data = &unique_e;
+	val_unique.mv_size = sizeof(entity_t);
 
-    entity_t unique_e;
-    MDB_val val_unique;
-    val_unique.mv_data = &unique_e;
-    val_unique.mv_size = sizeof(entity_t);
+	//         E                A               V
+	ins_str(db_ident, db_ident, ":db/ident");
+	// reusing ck for unique index here
+	unique_e = db_ident;
+	ck.type = KEY_UNIQUE;
+	ck.sort = ck.e = ck.t = 0;
+	rc = mdb_cursor_put(mc, &key, &val_unique, flag);
 
-    //         E                A               V
-    ins_str(db_ident, db_ident, ":db/ident");
-    // reusing ck for unique index here
-    unique_e = db_ident;
-    ck.type = KEY_UNIQUE;
-    ck.sort = ck.e = ck.t = 0;
-    rc = mdb_cursor_put(mc, &key, &val_unique, flag);
+	ins_str(db_type, db_ident, ":db/type");
+	unique_e = db_type;
+	ck.type = KEY_UNIQUE;
+	ck.sort = ck.e = ck.t = 0;
+	rc = mdb_cursor_put(mc, &key, &val_unique, flag);
 
-    ins_str(db_type, db_ident, ":db/type");
-    unique_e = db_type;
-    ck.type = KEY_UNIQUE;
-    ck.sort = ck.e = ck.t = 0;
-    rc = mdb_cursor_put(mc, &key, &val_unique, flag);
+	ins_str(db_cardinality, db_ident, ":db/cardinality");
+	unique_e = db_cardinality;
+	ck.type = KEY_UNIQUE;
+	ck.sort = ck.e = ck.t = 0;
+	rc = mdb_cursor_put(mc, &key, &val_unique, flag);
 
-    ins_str(db_cardinality, db_ident, ":db/cardinality");
-    unique_e = db_cardinality;
-    ck.type = KEY_UNIQUE;
-    ck.sort = ck.e = ck.t = 0;
-    rc = mdb_cursor_put(mc, &key, &val_unique, flag);
+	ins_str(db_unique, db_ident, ":db/unique");
+	unique_e = db_unique;
+	ck.type = KEY_UNIQUE;
+	ck.sort = ck.e = ck.t = 0;
+	rc = mdb_cursor_put(mc, &key, &val_unique, flag);
 
-    ins_str(db_unique, db_ident, ":db/unique");
-    unique_e = db_unique;
-    ck.type = KEY_UNIQUE;
-    ck.sort = ck.e = ck.t = 0;
-    rc = mdb_cursor_put(mc, &key, &val_unique, flag);
+	ins_int(db_ident,       db_type, db_type_value);
+	ins_int(db_type,        db_type, db_type_ref);
+	ins_int(db_cardinality, db_type, db_type_ref);
+	ins_int(db_unique,      db_type, db_type_ref);
 
-    ins_int(db_ident,       db_type, db_type_value);
-    ins_int(db_type,        db_type, db_type_ref);
-    ins_int(db_cardinality, db_type, db_type_ref);
-    ins_int(db_unique,      db_type, db_type_ref);
+	ins_int(db_ident,       db_cardinality, db_cardinality_one);
+	ins_int(db_type,        db_cardinality, db_cardinality_one);
+	ins_int(db_cardinality, db_cardinality, db_cardinality_one);
+	ins_int(db_unique,      db_cardinality, db_cardinality_one);
 
-    ins_int(db_ident,       db_cardinality, db_cardinality_one);
-    ins_int(db_type,        db_cardinality, db_cardinality_one);
-    ins_int(db_cardinality, db_cardinality, db_cardinality_one);
-    ins_int(db_unique,      db_cardinality, db_cardinality_one);
+	ins_int(db_ident,       db_unique, db_unique_yes);
+	ins_int(db_type,        db_unique, db_unique_no);
+	ins_int(db_cardinality, db_unique, db_unique_no);
+	ins_int(db_unique,      db_unique, db_unique_no);
 
-    ins_int(db_ident,       db_unique, db_unique_yes);
-    ins_int(db_type,        db_unique, db_unique_no);
-    ins_int(db_cardinality, db_unique, db_unique_no);
-    ins_int(db_unique,      db_unique, db_unique_no);
+	ins_str(db_type_value,       db_ident, ":db.type/value");
+	ins_str(db_type_ref,         db_ident, ":db.type/ref");
+	ins_str(db_cardinality_one,  db_ident, ":db.cardinality/one");
+	ins_str(db_cardinality_many, db_ident, ":db.cardinality/many");
+	ins_str(db_unique_no,        db_ident, ":db.unique/no");
+	ins_str(db_unique_yes,       db_ident, ":db.unique/yes");
 
-    ins_str(db_type_value,       db_ident, ":db.type/value");
-    ins_str(db_type_ref,         db_ident, ":db.type/ref");
-    ins_str(db_cardinality_one,  db_ident, ":db.cardinality/one");
-    ins_str(db_cardinality_many, db_ident, ":db.cardinality/many");
-    ins_str(db_unique_no,        db_ident, ":db.unique/no");
-    ins_str(db_unique_yes,       db_ident, ":db.unique/yes");
+	mdb_cursor_close(mc);
 
-    mdb_cursor_close(mc);
-
-    return false; // created
+	return false; // created
 }
 
 int open(const char *name, unsigned long long mapsz) {

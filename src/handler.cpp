@@ -14,10 +14,9 @@ extern "C" {
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/error/en.h>
 
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
-
-#include <set>
 
 #define EOL "\r\n"
 #define ACK_OK  "0" EOL
@@ -316,11 +315,13 @@ void transact(std::shared_ptr<session> self) {
 		goto err_tx;
 	}
 
+	/* TODO: later
 	if (doc.HasMember("tx") && doc["tx"].IsInt64() &&
 		doc["tx"].GetInt64() != tx) {
 		logger->error("transact: can't transact at specific tx #");
 		goto err_tx;
 	}
+	*/
 
 	res.SetObject();
 	res.AddMember("type", "response", res.GetAllocator());
