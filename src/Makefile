@@ -27,7 +27,7 @@ cov: test
 	( gcov handler.cpp -b -s . -r -b ) ; \
 		( lcov --directory . --extract . --output-file coverage.info ) ; \
 		( genhtml coverage.info --output-directory out ) ; \
-		( google-chrome ./out/index.html )
+		( google-chrome ./out/index.html & )
 
 tools: indices mdb_tools
 clean:

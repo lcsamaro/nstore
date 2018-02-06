@@ -18,69 +18,62 @@ thread_local MDB_txn *read_txn;
 namespace db {
 
 int custom_key_compare(const MDB_val *a, const MDB_val *b) {
-    assert(a->mv_size == sizeof(custom_key));
-    assert(b->mv_size == sizeof(custom_key));
+	assert(a->mv_size == sizeof(custom_key));
+	assert(b->mv_size == sizeof(custom_key));
 
-    custom_key *cka = (custom_key *) a->mv_data;
-    custom_key *ckb = (custom_key *) b->mv_data;
+	custom_key *cka = (custom_key *) a->mv_data;
+	custom_key *ckb = (custom_key *) b->mv_data;
 
-    /* assert alignment */
-    assert((((uint64_t) cka) & 7) == 0);
-    assert((((uint64_t) ckb) & 7) == 0);
+	/* assert alignment */
+	assert((((uint64_t) cka) & 7) == 0);
+	assert((((uint64_t) ckb) & 7) == 0);
 
-    int64_t cmp = cka->ns - ckb->ns;
-    if (cmp) return cmp;
+	int64_t cmp = cka->ns - ckb->ns;
+	if (cmp) return cmp;
 
-    cmp = cka->sort - ckb->sort;
-    if (cmp) return cmp;
+	cmp = cka->sort - ckb->sort;
+	if (cmp) return cmp;
 
-    if (cka->type == KEY_META || ckb->type == KEY_META) {
-        cmp = cka->type - ckb->type;
-        if (cmp) return cmp;
-        cmp = cka->e - ckb->e;
-        if (cmp) return cmp;
-    }
+	if (cka->type == KEY_META || ckb->type == KEY_META) {
+		cmp = cka->type - ckb->type;
+		if (cmp) return cmp;
+		cmp = cka->e - ckb->e;
+		if (cmp) return cmp;
+	}
 
-    if (cka->type == KEY_UNIQUE || ckb->type == KEY_UNIQUE) {
-        cmp = cka->type - ckb->type;
-        if (cmp) return cmp;
-        cmp = cka->a - ckb->a;
-        if (cmp) return cmp;
-        return memcmp(cka->v.b, ckb->v.b, 32);
-    }
+	if (cka->type == KEY_UNIQUE || ckb->type == KEY_UNIQUE) {
+		cmp = cka->type - ckb->type;
+		if (cmp) return cmp;
+		cmp = cka->a - ckb->a;
+		if (cmp) return cmp;
+		return memcmp(cka->v.b, ckb->v.b, 32);
+	}
 
-    auto sorting = cka->sort;
-    for (int i = 0; i < 4; i++) {
-        switch (sorting & 3) {
-            case SORT_E:
-                cmp = cka->e - ckb->e;
-                break;
-            case SORT_A:
-                cmp = cka->a - ckb->a;
-                break;
-            case SORT_T:
-                cmp = cka->t - ckb->t;
-                break;
-            case SORT_V:
-                cmp = cka->type - ckb->type;
-                if (cmp) return cmp;
-                switch (cka->type) {
-                    case KEY_INTEGER:
-                        cmp = cka->v.i - ckb->v.i;
-                        break;
-                    case KEY_BLOB:
-                        cmp = cka->pad - ckb->pad;
-                        if (cmp) return cmp;
-                        cmp = memcmp(cka->v.b, ckb->v.b, 32);
-                        break;
-                }
-                break;
-        }
-        if (cmp) return cmp;
-        sorting >>= 2;
-    }
-    return 0;
-
+	auto sorting = cka->sort;
+	for (int i = 0; i < 4; i++) {
+		switch (sorting & 3) {
+		case SORT_E: cmp = cka->e - ckb->e; break;
+		case SORT_A: cmp = cka->a - ckb->a; break;
+		case SORT_T: cmp = cka->t - ckb->t; break;
+		case SORT_V:
+			cmp = cka->type - ckb->type;
+			if (cmp) return cmp;
+			switch (cka->type) {
+			case KEY_INTEGER:
+				cmp = cka->v.i - ckb->v.i;
+				break;
+			case KEY_BLOB:
+				cmp = cka->pad - ckb->pad;
+				if (cmp) return cmp;
+				cmp = memcmp(cka->v.b, ckb->v.b, 32);
+				break;
+			}
+			break;
+		}
+		if (cmp) return cmp;
+		sorting >>= 2;
+	}
+	return 0;
 }
 
 void fill_meta_key(custom_key *ck, namespace_t ns, int64_t id) {
@@ -235,102 +228,102 @@ bool setup(MDB_txn *txn, namespace_t ns) {
 }
 
 int open(const char *name, unsigned long long mapsz) {
-    int rc = mdb_env_create(&env);
-    if (rc) return rc;
+	int rc = mdb_env_create(&env);
+	if (rc) return rc;
 
-    rc = mdb_env_set_mapsize(env, 1ULL << mapsz); // 1GB
-    if (rc) {
-        mdb_env_close(env);
-        return rc;
-    }
+	rc = mdb_env_set_mapsize(env, 1ULL << mapsz); // 1GB
+	if (rc) {
+		mdb_env_close(env);
+		return rc;
+	}
 
-    rc = mdb_env_open(env, name,
-                      MDB_NOSUBDIR |
-                      MDB_WRITEMAP |
-                      MDB_NOMETASYNC |
-                      MDB_NOSYNC |
-                      MDB_MAPASYNC |
-                      MDB_NOMEMINIT, 0664);
-    if (rc) {
-        mdb_env_close(env);
-        return rc;
-    }
+	rc = mdb_env_open(env, name,
+		      MDB_NOSUBDIR |
+		      MDB_WRITEMAP |
+		      MDB_NOMETASYNC |
+		      MDB_NOSYNC |
+		      MDB_MAPASYNC |
+		      MDB_NOMEMINIT, 0664);
+	if (rc) {
+		mdb_env_close(env);
+		return rc;
+	}
 
-    MDB_txn *txn;
-    rc = mdb_txn_begin(env, NULL, 0, &txn);
-    if (rc) {
-        mdb_env_close(env);
-        return rc;
-    }
+	MDB_txn *txn;
+	rc = mdb_txn_begin(env, NULL, 0, &txn);
+	if (rc) {
+		mdb_env_close(env);
+		return rc;
+	}
 
-    rc = mdb_dbi_open(txn, NULL, 0, &dbi);
-    if (rc) {
-        mdb_txn_abort(txn);
-        mdb_env_close(env);
-        return rc;
-    }
+	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
+	if (rc) {
+		mdb_txn_abort(txn);
+		mdb_env_close(env);
+		return rc;
+	}
 
-    mdb_set_compare(txn, dbi, custom_key_compare);
+	mdb_set_compare(txn, dbi, custom_key_compare);
 
-    setup(txn, 0);
+	setup(txn, 0);
 
-    mdb_txn_commit(txn);
+	mdb_txn_commit(txn);
 
-    return 0;
+	return 0;
 }
 
 void close() {
-    mdb_dbi_close(env, dbi);
-    mdb_env_close(env);
+	mdb_dbi_close(env, dbi);
+	mdb_env_close(env);
 }
 
 int txn_begin(unsigned int flags, MDB_txn **txn) {
-    return mdb_txn_begin(env, NULL, flags, txn);
+	return mdb_txn_begin(env, NULL, flags, txn);
 }
 
 int cursor_open(MDB_txn *txn, MDB_cursor **cursor) {
-    return mdb_cursor_open(txn, dbi, cursor);
+	return mdb_cursor_open(txn, dbi, cursor);
 }
 
 int cursor_put_padded(MDB_cursor *mc, custom_key *key, MDB_val *data) {
-    MDB_val k;
-    k.mv_size = sizeof(custom_key);
-    k.mv_data = key;
+	MDB_val k;
+	k.mv_size = sizeof(custom_key);
+	k.mv_data = key;
 
-    MDB_val v;
-    v.mv_size = data->mv_size - key->pad;
-    v.mv_data = NULL;
+	MDB_val v;
+	v.mv_size = data->mv_size - key->pad;
+	v.mv_data = NULL;
 
-    int rc;
-    if (key->pad < 0) {
-        if ((rc = mdb_cursor_put(mc, &k, &v, MDB_RESERVE))) return rc;
-        memcpy(v.mv_data, data->mv_data, data->mv_size);
-        return rc;
-    }
-    return mdb_cursor_put(mc, &k, data, data->mv_size);
+	int rc;
+	if (key->pad < 0) {
+		if ((rc = mdb_cursor_put(mc, &k, &v, MDB_RESERVE))) return rc;
+		memcpy(v.mv_data, data->mv_data, data->mv_size);
+		return rc;
+	}
+	return mdb_cursor_put(mc, &k, data, data->mv_size);
 }
 
 bool query(MDB_txn *txn, custom_key *start, std::function<bool(custom_key *k, MDB_val *v)> visitor) {
-    MDB_cursor *mc;
-    if (mdb_cursor_open(txn, dbi, &mc)) return true;
+	MDB_cursor *mc;
+	if (mdb_cursor_open(txn, dbi, &mc)) return true;
 
-    MDB_val key, data;
-    key.mv_data = start;
-    key.mv_size = sizeof(custom_key);
+	MDB_val key, data;
+	key.mv_data = start;
+	key.mv_size = sizeof(custom_key);
 
-    if (mdb_cursor_get(mc, &key, &data, MDB_SET_RANGE)) { // .GE. than key
-        mdb_cursor_close(mc);
-        return true;
-    }
+	if (mdb_cursor_get(mc, &key, &data, MDB_SET_RANGE)) { // .GE. than key
+		mdb_cursor_close(mc);
+		return true;
+	}
 
-    int rc = MDB_SUCCESS;
-    while (rc == MDB_SUCCESS) {
-        if (visitor((custom_key *) key.mv_data, &data)) break;
-        rc = mdb_cursor_get(mc, &key, &data, MDB_NEXT);
-    }
+	int rc = MDB_SUCCESS;
+	while (rc == MDB_SUCCESS) {
+		if (visitor((custom_key *) key.mv_data, &data)) break;
+		rc = mdb_cursor_get(mc, &key, &data, MDB_NEXT);
+	}
 
-    mdb_cursor_close(mc);
-    return false;
+	mdb_cursor_close(mc);
+	return false;
 }
 
 datom::datom(entity_t e, attribute_t a, i64 v, transaction_t t, bool r) :
@@ -340,90 +333,90 @@ datom::datom(entity_t e, attribute_t a, std::string v, transaction_t t, bool r) 
 	e(e), a(a), vs(v), t(t), r(r), is_int(false) {}
 
 query_result query_a(MDB_txn *txn, namespace_t ns, transaction_t tx, attribute_t a) {
-    custom_key min_key = {0};
-    min_key.ns = ns;
-    min_key.type = KEY_MIN_SENTINEL;
-    min_key.sort = SORT_AETV;
-    min_key.a = a;
+	custom_key min_key = {0};
+	min_key.ns = ns;
+	min_key.type = KEY_MIN_SENTINEL;
+	min_key.sort = SORT_AETV;
+	min_key.a = a;
 
-    tx = (tx << 1) + 1;
+	tx = (tx << 1) + 1;
 
-    query_result q;
-    std::unordered_map <std::string, std::tuple<bool, int64_t, std::string, int64_t>> current;
+	query_result q;
+	std::unordered_map <std::string, std::tuple<bool, int64_t, std::string, int64_t>> current;
 
-    int64_t last_e = -1;
-    auto write_batch = [&]() {
-        for (const auto &it : current) {
-            if (std::get<0>(it.second))
-                q.push_back(datom(last_e, a,
-                                  std::get<2>(it.second),
-                                  std::get<3>(it.second), false));
-            else
-                q.push_back(datom(last_e, a,
-                                  std::get<1>(it.second),
-                                  std::get<3>(it.second), false));
-        }
-        current.clear();
-    };
+	int64_t last_e = -1;
+	auto write_batch = [&]() {
+		for (const auto &it : current) {
+			if (std::get<0>(it.second))
+				q.push_back(datom(last_e, a,
+					std::get<2>(it.second),
+					std::get<3>(it.second), false));
+			else
+				q.push_back(datom(last_e, a,
+					std::get<1>(it.second),
+					std::get<3>(it.second), false));
+		}
+		current.clear();
+	};
 
-    auto v = [&](custom_key *k, MDB_val *v) -> bool {
-        if (k->a != a || k->ns != ns || k->sort != min_key.sort) return true;
-        if (k->t > tx) return false;
-        if (k->e != last_e) write_batch();
+	auto v = [&](custom_key *k, MDB_val *v) -> bool {
+		if (k->a != a || k->ns != ns || k->sort != min_key.sort) return true;
+		if (k->t > tx) return false;
+		if (k->e != last_e) write_batch();
 
-        std::string vs((char *) k->v.b, 32);
-        if (k->t & 1) { // retraction
-            current.erase(vs);
-        } else if (k->type == KEY_INTEGER) {
-            current[vs] = std::make_tuple(false, k->v.i, "", k->t >> 1);
-        } else {
-            if (k->pad > 0)
-                current[vs] = std::make_tuple(true, -1,
-                                              std::string((char *) k->v.b, k->pad - 1),
-                                              k->t >> 1);
-            else
-                current[vs] = std::make_tuple(true, -1,
-                                              std::string((char *) v->mv_data,
-                                                          v->mv_size + k->pad),
-                                              k->t >> 1);
-        }
+		std::string vs((char *) k->v.b, 32);
+		if (k->t & 1) { // retraction
+			current.erase(vs);
+		} else if (k->type == KEY_INTEGER) {
+			current[vs] = std::make_tuple(false, k->v.i, "", k->t >> 1);
+		} else {
+			if (k->pad > 0)
+				current[vs] = std::make_tuple(true, -1,
+					std::string((char *) k->v.b, k->pad - 1),
+					k->t >> 1);
+			else
+				current[vs] = std::make_tuple(true, -1,
+					std::string((char *) v->mv_data,
+					v->mv_size + k->pad),
+					k->t >> 1);
+		}
 
-        last_e = k->e;
-        return false;
-    };
+		last_e = k->e;
+		return false;
+	};
 
-    query(txn, &min_key, v);
-    write_batch();
+	query(txn, &min_key, v);
+	write_batch();
 
-    return q;
+	return q;
 }
 
 bool last_datom(MDB_txn *txn, custom_key *start) {
-    MDB_cursor *mc;
-    if (mdb_cursor_open(txn, dbi, &mc)) return true;
+	MDB_cursor *mc;
+	if (mdb_cursor_open(txn, dbi, &mc)) return true;
 
-    auto e = start->e;
-    auto a = start->a;
-    auto ns = start->ns;
+	auto e = start->e;
+	auto a = start->a;
+	auto ns = start->ns;
 
-    start->sort = SORT_EATV;
-    start->a++;
-    start->t = -1;
+	start->sort = SORT_EATV;
+	start->a++;
+	start->t = -1;
 
-    MDB_val key, data;
-    key.mv_data = start;
-    key.mv_size = sizeof(custom_key);
+	MDB_val key, data;
+	key.mv_data = start;
+	key.mv_size = sizeof(custom_key);
 
-    if (mdb_cursor_get(mc, &key, &data, MDB_SET_RANGE) || // .GE. than key
-        mdb_cursor_get(mc, &key, &data, MDB_PREV)) {
-        mdb_cursor_close(mc);
-        return true;
-    }
+	if (mdb_cursor_get(mc, &key, &data, MDB_SET_RANGE) || // .GE. than key
+		mdb_cursor_get(mc, &key, &data, MDB_PREV)) {
+		mdb_cursor_close(mc);
+		return true;
+	}
 
-    memcpy(start, key.mv_data, sizeof(custom_key));
+	memcpy(start, key.mv_data, sizeof(custom_key));
 
-    mdb_cursor_close(mc);
-    return (e != start->e || a != start->a || ns != start->ns);
+	mdb_cursor_close(mc);
+	return (e != start->e || a != start->a || ns != start->ns);
 }
 
 } // end of db namespace
