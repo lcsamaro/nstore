@@ -31,23 +31,25 @@ int custom_key_compare(const MDB_val *a, const MDB_val *b) {
 	int64_t cmp = cka->ns - ckb->ns;
 	if (cmp) return cmp;
 
+	if (cka->type < KEY_MIN_SENTINEL || ckb->type < KEY_MIN_SENTINEL) {
+		cmp = cka->type - ckb->type;
+		if (cmp) return cmp;
+		switch (cka->type) {
+		case KEY_META:
+			cmp = cka->e - ckb->e;
+			return cmp;
+		case KEY_UNIQUE:
+			cmp = cka->a - ckb->a;
+			if (cmp) return cmp;
+			return memcmp(cka->v.b, ckb->v.b, 32);
+		case KEY_TX_LOG:
+			cmp = cka->t - ckb->t; // subtx
+			return cmp;
+		}
+	}
+
 	cmp = cka->sort - ckb->sort;
 	if (cmp) return cmp;
-
-	if (cka->type == KEY_META || ckb->type == KEY_META) {
-		cmp = cka->type - ckb->type;
-		if (cmp) return cmp;
-		cmp = cka->e - ckb->e;
-		if (cmp) return cmp;
-	}
-
-	if (cka->type == KEY_UNIQUE || ckb->type == KEY_UNIQUE) {
-		cmp = cka->type - ckb->type;
-		if (cmp) return cmp;
-		cmp = cka->a - ckb->a;
-		if (cmp) return cmp;
-		return memcmp(cka->v.b, ckb->v.b, 32);
-	}
 
 	auto sorting = cka->sort;
 	for (int i = 0; i < 4; i++) {

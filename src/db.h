@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-
 #define NSTORE_VERSION_MAJOR 0
 #define NSTORE_VERSION_MINOR 0
 #define NSTORE_VERSION_PATCH 0
@@ -45,6 +44,7 @@ extern thread_local MDB_txn *read_txn;
 enum {
 	KEY_META = 0,
 	KEY_UNIQUE,
+	KEY_TX_LOG,
 	KEY_MIN_SENTINEL,
 	KEY_INTEGER,
 	KEY_BLOB,
@@ -99,7 +99,6 @@ int custom_key_compare(const MDB_val *a, const MDB_val *b);
 
 // helpers for meta keys
 bool put_meta(MDB_txn *txn, namespace_t ns, i64 id, i64 val);
-
 bool get_meta(MDB_txn *txn, namespace_t ns, i64 id, i64 *val);
 
 // check if db namespace exists

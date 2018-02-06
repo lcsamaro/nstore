@@ -1,4 +1,5 @@
 /* This implements datascript/nstore syncing */
+// TODO: optimistic transact
 var d = require('datascript');
 
 let retryms = 1000;
@@ -51,7 +52,6 @@ Conn.prototype.transact = function(datoms) {
 
     }
   }
-  //console.log('transact', datoms);
   this.doSend("transact " + JSON.stringify(datoms) + "\r\n"); 
 }
 
@@ -165,8 +165,6 @@ Conn.prototype.updateStore = function(facts) {
   }
 
   if (schemaChanged) {
-    //console.log("new schema!");
-    //console.log(this.idents);
     let dschema = {};
     let keys = Object.keys(this.schema);
     for (var i = 0; i < keys.length; i++) {
@@ -191,21 +189,10 @@ Conn.prototype.updateStore = function(facts) {
 }
 
 Conn.prototype.onMessage = function(evt) {
-  /*if (evt.data.length > 1024 * 1024) {
-    console.log("new message " + evt.data.length / (1024*1024) + "MB of data");
-  } else if (evt.data.length > 1024) {
-    console.log("new message " + evt.data.length / 1024 + "KB of data");
-  } else {
-    console.log("new message " + evt.data.length + "B of data");
-  }*/
   let data = JSON.parse(evt.data);
-  //console.log(data);
   if (data !== null && typeof data === 'object' && 'tx' in data) this.curtx = data.tx;
 
-  //console.log("cur tx: ", this.curtx);
   if (data.type == "response" && this.sync) {
-    //console.log("received facts from tx: " + data.tx);
-    //console.log(data.facts);
     let snapshot = data.facts;
 
     // derive idents
