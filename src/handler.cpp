@@ -316,6 +316,12 @@ void transact(std::shared_ptr<session> self) {
 		goto err_tx;
 	}
 
+	if (doc.HasMember("tx") && doc["tx"].IsInt64() &&
+		doc["tx"].GetInt64() != tx) {
+		logger->error("transact: can't transact at specific tx #");
+		goto err_tx;
+	}
+
 	res.SetObject();
 	res.AddMember("type", "response", res.GetAllocator());
 	res.AddMember("tx", tx, res.GetAllocator());
