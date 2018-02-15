@@ -1,17 +1,17 @@
 # nstore
 
-Facts store & sync. Meant to be used in conjunction with DataScript, or similar.
+Facts store, loosely based on [Datomic](https://www.datomic.com/). Meant to be used in conjunction with [DataScript](https://github.com/tonsky/datascript).
+
+This implements active facts retrieval for a given transaction id and publishing of new facts added to the store. Syncing of new facts is handled automatically. The idea is to use DataScript as the application state.
 
 ![Alt Text](https://github.com/lcsamaro/nstore/raw/master/sample/sample.gif)
 
-## building
-
+## building the server
 * install libsodium
 * cd src
 * make
 
-## sample
-
+## running the sample
 * install openresty
 * cd sample
 * npm install
@@ -19,6 +19,4 @@ Facts store & sync. Meant to be used in conjunction with DataScript, or similar.
 
 * run nstore server: ./src/server --db filename
 
-* access localhost:8080
-
-
+* sample is running at localhost:8080
