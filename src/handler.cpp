@@ -52,62 +52,35 @@ std::string make_response(rapidjson::Document& res) {
 	return response;
 }
 
-void ping(std::shared_ptr<session> self) {
-	auto arg = self->argument();
+void handle_ping(std::shared_ptr<session> self) {
+	std::string arg = self->argument();
 	arg.append(EOL);
 	self->write(arg);
 }
 
-void subscribe(std::shared_ptr<session> self) {
-	auto ns = self->selected();
-	channel::join(ns, self);
-	self->write(ACK_OK);
-}
-
-void unsubscribe(std::shared_ptr<session> self) {
-	auto ns = self->selected();
-	channel::leave(ns, self);
-	self->write(ACK_OK);
-}
-
-void info(std::shared_ptr<session> self) {
-	rapidjson::Document d;
-	auto& a = d.GetAllocator();
-	d.SetObject();
-	d.AddMember("startup",     stats::startup,        a);
-	d.AddMember("connects",    stats::no_connects,    a);
-	d.AddMember("disconnects", stats::no_disconnects, a);
-	d.AddMember("ro_txns",     stats::no_ro_txns,     a);
-	d.AddMember("w_txns",      stats::no_w_txns,      a);
-	auto response = make_response(d);
-	self->write(response);
-}
-
-void freeze(std::shared_ptr<session> self) {
-	self->freeze();
-	self->write(ACK_OK);
-}
-
-void ronly(std::shared_ptr<session> self) {
-	self->lock();
-	self->write(ACK_OK);
-}
-
-void select(std::shared_ptr<session> self) {
+void handle_namespace(std::shared_ptr<session> self) {
 	rapidjson::Document doc;
-	if (doc.Parse(self->argument().c_str()).HasParseError()) {
-		logger->warn("{} [select] invalid json: {}", self->uid(), self->argument());
-		PERROR("[select] invalid json");
-	}
-	if (!doc.IsInt64()) {
-		logger->warn("{} [select] invalid argument: {}", self->uid(), self->argument());
-		PERROR("[select] invalid arg");
-	}
+	if (doc.Parse(self->argument()).HasParseError()) PERROR("invalid json");
+	if (!doc.IsInt64()) PERROR("invalid arg");
 
-	if (mdb_txn_renew(read_txn)) {
-		logger->error("{} [select] could not renew transaction", self->uid());
-		PERROR("[select] ro txn");
-	}
+	MDB_txn *txn;
+	if (db::txn_begin(0, &txn)) PERROR("namespace. txn begin");
+
+	db::setup(txn, doc.GetInt64());
+
+	if (mdb_txn_commit(txn)) PERROR("namespace. txn_commit");
+
+	io_service.post([self] () {
+			self->write(ACK_OK);
+			self->read_request();
+		});
+}
+
+void handle_select(std::shared_ptr<session> self) {
+	rapidjson::Document doc;
+	if (doc.Parse(self->argument()).HasParseError()) PERROR("[select] invalid json");
+	if (!doc.IsInt64()) PERROR("[select] invalid arg");
+	if (mdb_txn_renew(read_txn)) PERROR("[select] ro txn");
 	auto ns = doc.GetInt64();
 	auto e = db::exists(read_txn, ns);
 	mdb_txn_reset(read_txn);
@@ -115,28 +88,19 @@ void select(std::shared_ptr<session> self) {
 	if (e) {
 		self->select(ns);
 		io_service.post([self, ns] () {
-			channel::leave(ns, self);
-			self->write(ACK_OK);
-			self->read_request();
-		});
-	} else {
-		io_service.post([self] () {
-			self->write(ACK_ERR);
-			self->read_request();
-		});
-	}
+				channel::leave(ns, self);
+				self->write(ACK_OK);
+				self->read_request();
+			});
+	} else PERROR("[select] namespace does not exist");
 }
 
-void facts(std::shared_ptr<session> self) {
+void handle_facts(std::shared_ptr<session> self) {
 	auto arg = self->argument();
 	auto ns = self->selected();
 	rapidjson::Document doc;
-	if (doc.Parse(arg.c_str()).HasParseError()) {
-		logger->info(arg);
-		PERROR("[facts] invalid json");
-	}
+	if (doc.Parse(arg).HasParseError()) PERROR("[facts] invalid json");
 	if (!doc.IsInt64()) PERROR("[facts] invalid arg");
-
 	if (mdb_txn_renew(read_txn)) PERROR("[facts] ro txn");
 
 	transaction_t tx = doc.GetInt64();
@@ -258,34 +222,11 @@ next:
 	mdb_txn_reset(read_txn);
 }
 
-void ns(std::shared_ptr<session> self) {
-	auto arg = self->argument();
-	rapidjson::Document doc;
-	if (doc.Parse(arg.c_str()).HasParseError()) PERROR("invalid json");
-	if (!doc.IsInt64()) PERROR("invalid arg");
-
-	MDB_txn *txn;
-	if (db::txn_begin(0, &txn)) PERROR("namespace. txn begin");
-
-	auto exists = db::setup(txn, doc.GetInt64());
-
-	if (mdb_txn_commit(txn)) PERROR("namespace. txn_commit"); // should abort? (after failed commit)
-
-	if (exists) io_service.post([self] () {
-			self->write(ACK_ERR);
-			self->read_request();
-		});
-	else io_service.post([self] () {
-			self->write(ACK_OK);
-			self->read_request();
-		});
-}
-
-void transact(std::shared_ptr<session> self) {
+void handle_transact(std::shared_ptr<session> self) {
 	auto arg = self->argument();
 	auto ns = self->selected();
 	rapidjson::Document doc;
-	if (doc.Parse(arg.c_str()).HasParseError()) PERROR("invalid json");
+	if (doc.Parse(arg).HasParseError()) PERROR("invalid json");
 
 	if (!doc.IsArray()) PERROR("transact. invalid arg");
 	auto facts = doc.GetArray();
@@ -314,14 +255,6 @@ void transact(std::shared_ptr<session> self) {
 		logger->error("transact: cant get META_ID");
 		goto err_tx;
 	}
-
-	/* TODO: later
-	if (doc.HasMember("tx") && doc["tx"].IsInt64() &&
-		doc["tx"].GetInt64() != tx) {
-		logger->error("transact: can't transact at specific tx #");
-		goto err_tx;
-	}
-	*/
 
 	res.SetObject();
 	res.AddMember("type", "response", res.GetAllocator());
@@ -364,7 +297,7 @@ void transact(std::shared_ptr<session> self) {
 		if (eav[1].IsInt64()) {
 			a = eav[1].GetInt64();
 		} else {
-			logger->info("transact: invalid attribute");
+			logger->info("transact: invalid attribute, must be integer");
 			goto err_cur; // invalid A
 		}
 
@@ -436,8 +369,9 @@ void transact(std::shared_ptr<session> self) {
 				val.mv_size = 0;
 			}
 		} else {
-			logger->error("transact: invalid value type");
-			goto err_cur;
+			//logger->error("transact: invalid value type");
+			logger->warn("[transact] skipping fact, invalid value type");
+			continue; //goto err_cur; // DBG
 		}
 
 		ck.e = e;
@@ -513,8 +447,9 @@ skip_remove_last:
 		ck.t = (tx << 1) + (retract ? 1 : 0);
 
 		ck.sort = SORT_EATV;
-		if (db::cursor_put_padded(mc, &ck, &val)) {
-			logger->error("transact: error inserting value EATV");
+		int er;
+		if ((er = db::cursor_put_padded(mc, &ck, &val))) {
+			logger->error("transact: error inserting value EATV. code: {}", er);
 			goto err_cur;
 		}
 
@@ -577,17 +512,4 @@ err_tx:
 	mdb_txn_abort(txn);
 	PERROR("transact");
 }
-
-handler handlers[no_handlers] = {
-	{ "facts"      , facts      , HANDLER_READ                 },
-	{ "transact"   , transact   , HANDLER_WRITE | HANDLER_LOCK },
-	{ "subscribe"  , subscribe  , HANDLER_IO    | HANDLER_LOCK },
-	{ "unsubscribe", unsubscribe, HANDLER_IO    | HANDLER_LOCK },
-	{ "freeze"     , freeze     , HANDLER_IO                   },
-	{ "ronly"      , ronly      , HANDLER_IO                   },
-	{ "select"     , select     , HANDLER_READ  | HANDLER_LOCK },
-	{ "namespace"  , ns         , HANDLER_WRITE | HANDLER_LOCK },
-	{ "info"       , info       , HANDLER_IO                   },
-	{ "ping"       , ping       , HANDLER_IO                   }
-};
 

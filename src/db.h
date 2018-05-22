@@ -19,13 +19,6 @@ enum sorting { SORT_E=0, SORT_A, SORT_V, SORT_T };
 #define SORT_AETV MAKE_SORT(SORT_A, SORT_E, SORT_T, SORT_V)
 
 enum {
-	INDEX_META,
-	INDEX_TXN,
-	INDEX_EATV,
-	INDEX_AETV
-};
-
-enum {
     META_TX = 0,
     META_ID,
     META_VERSION_MAJOR,

@@ -16,11 +16,8 @@ using asio::ip::tcp;
 
 class session : public std::enable_shared_from_this<session> {
 	tcp::socket s;
-	uint32_t ns;
-	uint64_t id;
-
-	bool frozen;   // if set, namespace cannot be changed
-	bool readonly; // if set, writer operations cannot be done
+	u32 ns;
+	u64 id;
 
 	asio::streambuf data;
 	std::string arg;
@@ -37,12 +34,10 @@ public:
 	void write(const std::string& msg);
 	void read_request();
 
-	void     select(uint32_t n);
-	uint32_t selected();
-	void     freeze();
-	void     lock();
-	uint64_t uid();
-	std::string& argument();
+	void     select(u32 n);
+	u32 selected();
+	u64 uid();
+	const char *argument();
 };
 
 #endif // NSTORE_UNIT_TESTING

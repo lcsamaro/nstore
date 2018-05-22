@@ -19,11 +19,10 @@
 #define ACK_OK  "0" EOL
 #define ACK_ERR "1" EOL
 
-static uint64_t next_uid = 0;
+static u64 next_uid = 0;
 
 session::session(tcp::socket socket) :
-	s(std::move(socket)), ns(0),
-	frozen(false), readonly(false) {
+	s(std::move(socket)), ns(0) {
 	id = next_uid++;
 	stats::no_connects++;
 }
@@ -46,28 +45,20 @@ void session::write(const std::string& msg) {
 	if (!write_in_progress) do_write();
 }
 
-void session::select(uint32_t n) {
+void session::select(u32 n) {
 	ns = n;
 }
 
-uint32_t session::selected() {
+u32 session::selected() {
 	return ns;
 }
 
-void session::freeze() {
-	frozen = true;
-}
-
-void session::lock() {
-	readonly = true;
-}
-
-uint64_t session::uid() {
+u64 session::uid() {
 	return id;
 }
 
-std::string& session::argument() {
-	return arg;
+const char *session::argument() {
+	return arg.c_str()+1;
 }
 
 void session::do_write() {
@@ -86,33 +77,29 @@ void session::read_request() {
 	asio::async_read_until(s, data, EOL,
 		[this, self] (asio::error_code ec, size_t length) {
 			MAYBE_QUIT();
-			std::string cmd;
 			std::istream stream(&data);
-			std::getline(stream, cmd, CMD_DELIM);
 			std::getline(stream, arg);
-
-			for (auto& h : handlers) {
-				if (strcmp(cmd.c_str(), h.command)) continue;
-				if ((h.flags & HANDLER_LOCK) && frozen) goto error;
-				auto f = h.fn;
-				if (h.flags & HANDLER_WRITE) {
-					if (readonly) goto error;
-					stats::no_w_txns++;
-					writer_service.post([f, self] () { f(self); });
-				} else if (h.flags & HANDLER_READ) {
-					stats::no_ro_txns++;
-					reader_service.post([f, self] () { f(self); });
-				} else { // IO
-					f(self);
-					read_request();
-				}
+			switch (arg[0]) {
+			case 'p':
+				handle_ping(self);
+				read_request();
 				break;
+			case 'n':
+				writer_service.post([self] () { handle_namespace(self); });
+				break;
+			case 's':
+				reader_service.post([self] () { handle_select(self); });
+				break;
+			case 'f':
+				reader_service.post([self] () { handle_facts(self); });
+				break;
+			case 't':
+				writer_service.post([self] () { handle_transact(self); });
+				break;
+			default:
+				write(ACK_ERR);
+				read_request();
 			}
-
-			return;
-error:
-			write(ACK_ERR);
-			read_request();
 		});
 }
 

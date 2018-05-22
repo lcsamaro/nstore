@@ -5,21 +5,11 @@
 
 class session;
 
-enum handler_flags {
-	HANDLER_IO    = 0x0,
-	HANDLER_READ  = 0x1,
-	HANDLER_WRITE = 0x2,
-	HANDLER_LOCK  = 0x4
-};
-
-struct handler {
-	const char* command;
-	void (*fn) (std::shared_ptr<session>);
-	int flags;
-};
-
-const int no_handlers = 10;
-extern handler handlers[no_handlers];
+void handle_ping(std::shared_ptr<session> self);
+void handle_namespace(std::shared_ptr<session> self);
+void handle_select(std::shared_ptr<session> self);
+void handle_facts(std::shared_ptr<session> self);
+void handle_transact(std::shared_ptr<session> self);
 
 #endif // NSTORE_HANDLER_H
 
